@@ -20,7 +20,9 @@ logger.warn("Warning message");
 logger.error("FIRE AAAAH");
 ```
 output:
+
 <img width="638" height="93" alt="image" src="https://github.com/user-attachments/assets/dbfb6a6a-e0a3-42f8-83fc-a7c6aae802c6" />
+
 
 [!WARNING]
 This library requires C++20 or later!
