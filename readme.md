@@ -26,3 +26,27 @@ logger.error("FIRE AAAAH");
 output:
 
 <img width="638" height="93" alt="image" src="https://github.com/user-attachments/assets/dbfb6a6a-e0a3-42f8-83fc-a7c6aae802c6" />
+
+### Typed logger
+```cpp
+class Worker {
+    dlog::TypedLogger<Worker> m_logger{};
+
+public:
+    void run() {
+        m_logger.log("starting");
+    }
+};
+```
+
+The typed logger is a lightweight interface over `dlog::default_logger()`, shared
+by all typed logger instances. It adds the type name to each message. By
+default, it writes to the console at `Level::INFO`. To enable file output for
+typed loggers, configure their shared logger before logging:
+
+```cpp
+dlog::set_default_log_directory("logs");
+```
+
+This creates the same timestamped log file and `latest.log` symlink as a
+file-backed `Logger`.

@@ -28,9 +28,13 @@ SOFTWARE.
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <source_location>
 #include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 
 namespace dlog {
 namespace fs = std::filesystem;
@@ -138,6 +142,68 @@ class Logger {
 		out << std::format("{}{}\033[0m", color, plain);
 
 		if (m_to_file && m_file.is_open()) { m_file << plain; }
+	}
+};
+
+namespace detail {
+inline std::unique_ptr<Logger>& default_logger_storage() {
+	static std::unique_ptr<Logger> logger = std::make_unique<Logger>();
+	return logger;
+}
+inline std::mutex& default_logger_mutex() {
+	static std::mutex mutex;
+	return mutex;
+}
+} // namespace detail
+
+inline Logger& default_logger() { return *detail::default_logger_storage(); }
+
+inline void set_default_log_directory(std::string const& log_dir, Level min_level = Level::INFO) {
+	auto logger = std::make_unique<Logger>(log_dir, min_level);
+	std::lock_guard<std::mutex> lock{detail::default_logger_mutex()};
+	detail::default_logger_storage() = std::move(logger);
+}
+
+namespace detail {
+template <typename T>
+consteval std::string_view type_name() {
+#if defined(__clang__)
+	std::string_view name = __PRETTY_FUNCTION__;
+	auto const start = name.find("T = ") + 4;
+	return name.substr(start, name.find(']', start) - start);
+#elif defined(__GNUC__)
+	std::string_view name = __PRETTY_FUNCTION__;
+	auto const start = name.find("with T = ") + 9;
+	return name.substr(start, name.find(';', start) - start);
+#elif defined(_MSC_VER)
+	std::string_view name = __FUNCSIG__;
+	auto const start = name.find("type_name<") + 10;
+	return name.substr(start, name.find(">(void)", start) - start);
+#else
+	return "unknown";
+#endif
+}
+} // namespace detail
+
+template <typename Type>
+class TypedLogger {
+  public:
+	void log(std::string const& message, std::source_location loc = std::source_location::current()) const {
+		default_logger().log(tagged(message), loc);
+	}
+	void debug(std::string const& message, std::source_location loc = std::source_location::current()) const {
+		default_logger().debug(tagged(message), loc);
+	}
+	void warn(std::string const& message, std::source_location loc = std::source_location::current()) const {
+		default_logger().warn(tagged(message), loc);
+	}
+	void error(std::string const& message, std::source_location loc = std::source_location::current()) const {
+		default_logger().error(tagged(message), loc);
+	}
+
+  private:
+	static std::string tagged(std::string const& message) {
+		return std::format("[{}] {}", detail::type_name<Type>(), message);
 	}
 };
 } // namespace dlog
